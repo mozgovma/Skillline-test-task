@@ -153,6 +153,8 @@
     line-height: 20.8px;
     letter-spacing: 0px;
     display: flex;
+    max-width: 100%;
+    overflow-x: auto;
   }
   
   li {
