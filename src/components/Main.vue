@@ -118,10 +118,10 @@
 </template>
 
 <script setup>
-import MiniIconDoc from "@/assets/images/Icon.png"
-import MiniIconSearch from "@/assets/images/IconSearch.png"
-import nextArrow from "@/assets/images/next-arrow.png"
-import backArrow from "@/assets/images/back-arrow.png"
+import MiniIconDoc from "@/assets/images/Icon.png";
+import MiniIconSearch from "@/assets/images/IconSearch.png";
+import nextArrow from "@/assets/images/next-arrow.png";
+import backArrow from "@/assets/images/back-arrow.png";
 import CustomInput from "./CustomInput.vue";
 import CustomSelect from "./CustomSelect.vue";
 import CustomSelectForStatus from "./CustomSelectForStatus.vue";
@@ -135,33 +135,26 @@ const isLoading = ref(true);
 const count = ref(10);
 const page = ref(1);
 const selectedSchools = ref([]);
-const pages_count = ref();  // Количество страниц, получаем с API
-const totalRecords = ref(); // Всего записей, получаем с API
+const pages_count = ref(0);
+const totalRecords = ref(0);
 
 const fetchSchools = async () => {
   isLoading.value = true;
+  errorMessage.value = "";
 
   try {
     const selectedOptions = JSON.parse(localStorage.getItem('selectedOptions')) || [];
     const selectedOptionsCust = JSON.parse(localStorage.getItem('selectedOptionsCustomSelect')) || [];
 
     const response = await axios.get(`https://schooldb.skillline.ru/api/schools`, {
-      params: {
-        count: count.value,
-        page: page.value,
-      },
-      headers: {
-        "accept": "application/json",
-        "X-CSRF-TOKEN": ""
-      }
+      params: { count: count.value, page: page.value },
+      headers: { "accept": "application/json", "X-CSRF-TOKEN": "" }
     });
 
     if (response.status === 200) {
-      const filteredData = filterSchools(response.data, selectedOptions, selectedOptionsCust);
-      schools.value = filteredData;
+      schools.value = filterSchools(response.data, selectedOptions, selectedOptionsCust);
       pages_count.value = schools.value.data.pages_count;
       totalRecords.value = schools.value.data.total_count;
-      page.value = schools.value.data.page;
     } else {
       handleError(response.status);
     }
@@ -172,15 +165,62 @@ const fetchSchools = async () => {
   }
 };
 
+
+const filterSchools = (data, selectedOptions, selectedOptionsCust) => {
+  if (!selectedOptions.length && !selectedOptionsCust.length) return data;
+
+  const filteredList = data.data.list.filter(school => {
+    const eduLevel = findEduLevelCode(school.supplements);
+    const isOpen = checkSchoolStatus(school.end_date);
+
+    const levelMatch = selectedOptions.length ? selectedOptions.includes(eduLevel) : true;
+    const statusMatch = selectedOptionsCust.length ? (
+      (selectedOptionsCust.includes('Открыта') && isOpen) ||
+      (selectedOptionsCust.includes('Закрыта') && !isOpen)
+    ) : true;
+
+    return levelMatch && statusMatch;
+  });
+
+  return { ...data, data: { ...data.data, list: filteredList } };
+};
+
+
+const checkSchoolStatus = (endDate) => {
+  return !endDate || new Date(endDate) > new Date();
+};
+
+
+const findEduLevelCode = (supplements) => {
+  if (!Array.isArray(supplements)) return "—";
+  for (const supplement of supplements) {
+    const program = supplement.educational_programs?.find(p => p?.edu_level?.short_name);
+    if (program) return program.edu_level.short_name;
+  }
+  return "—";
+};
+
+
+const handleError = (status) => {
+  const errors = {
+    400: "Ошибка валидации",
+    404: "Страница не найдена",
+    429: "Слишком частые запросы",
+    500: "Ошибка сервера",
+  };
+  errorMessage.value = errors[status] || `Неизвестная ошибка (${status}).`;
+};
+
+
 const filteredSchools = computed(() => {
   if (!searchQuery.value.trim()) return schools.value.data?.list || [];
 
-  return (schools.value.data?.list || []).filter(school => {
+  const query = searchQuery.value.toLowerCase();
+  return schools.value.data?.list.filter(school => {
     const name = school.edu_org.short_name || "";
     const region = school.edu_org.region?.name || "";
     const address = school.edu_org.contact_info?.post_address || "";
 
-    const query = searchQuery.value.toLowerCase();
     return (
       name.toLowerCase().includes(query) ||
       region.toLowerCase().includes(query) ||
@@ -197,108 +237,34 @@ const handleSearch = () => {
 };
 
 
-
-const checkSchoolStatus = (endDate) => {
-  const currentDate = new Date();
-  if (!endDate) {
-    return true;
-  }
-  return new Date(endDate) > currentDate;
-};
-
-
-const filterSchools = (data, selectedOptions, selectedOptionsCust) => {
-  if (!selectedOptions && !selectedOptionsCust || (selectedOptions.length === 0 && selectedOptionsCust.length === 0)) {
-    return data; 
-  }
-
-  const filteredList = data.data.list.filter((school) => {
-   
-    const eduLevel = school.supplements
-      ?.flatMap((supplement) => supplement.educational_programs)
-      ?.find((program) => program?.edu_level?.short_name)
-      ?.edu_level?.short_name;
-
-    const levelMatch = selectedOptions.includes(eduLevel);
-
-   
-    const isOpen = checkSchoolStatus(school.end_date);
-    const statusMatch = selectedOptionsCust.includes('Открыта') && isOpen || selectedOptionsCust.includes('Закрыта') && !isOpen;
-
-    return (selectedOptions.length === 0 || levelMatch) && (selectedOptionsCust.length === 0 || statusMatch);
-  });
-
-  return {
-    ...data,
-    data: {
-      ...data.data,
-      list: filteredList,
-    },
-  };
-};
-
-const handleError = (status) => {
-  switch (status) {
-    case 400:
-      errorMessage.value = "Ошибка валидации";
-      break;
-    case 404:
-      errorMessage.value = "Страница не найдена";
-      break;
-    case 429:
-      errorMessage.value = "Слишком частые запросы";
-      break;
-    case 500:
-      errorMessage.value = "Ошибка сервера";
-      break;
-    default:
-      errorMessage.value = `Неизвестная ошибка (${status}).`;
-  }
-};
-
-
 const updateSchoolsCount = () => {
   page.value = 1;
   fetchSchools();
 };
 
-const isAnySelected = computed(() => selectedSchools.value.length > 0);
 
 const toggleSelectAll = () => {
-  if (isAnySelected.value) {
-    selectedSchools.value = [];
-  } else {
-    selectedSchools.value = schools.value.data.list.map((_, index) => index);
-  }
+  selectedSchools.value = isAnySelected.value ? [] : schools.value.data.list.map((_, index) => index);
 };
+
 
 const toggleSingleSelection = (index) => {
-  if (selectedSchools.value.includes(index)) {
-    selectedSchools.value = selectedSchools.value.filter((i) => i !== index);
-  } else {
-    selectedSchools.value.push(index);
-  }
+  selectedSchools.value = selectedSchools.value.includes(index)
+    ? selectedSchools.value.filter(i => i !== index)
+    : [...selectedSchools.value, index];
 };
 
-const findEduLevelCode = (supplements) => {
-  if (!Array.isArray(supplements)) return "—";
-  for (const supplement of supplements) {
-    if (Array.isArray(supplement.educational_programs)) {
-      const program = supplement.educational_programs.find(p => p?.edu_level?.short_name);
-      if (program) return program.edu_level.short_name;
-    }
-  }
-  return "—";
-};
+
+const isAnySelected = computed(() => selectedSchools.value.length > 0);
+
 
 const goToPage = (newPage) => {
-  if (newPage >= 1 && newPage <= pages_count.value && pages_count.value) {
+  if (newPage >= 1 && newPage <= pages_count.value) {
     page.value = newPage;
     fetchSchools();
   }
 };
 
-onMounted(() => {
-  fetchSchools();
-});
+
+onMounted(fetchSchools);
 </script>

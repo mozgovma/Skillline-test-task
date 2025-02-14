@@ -3,7 +3,6 @@
     <input 
       type="text" 
       v-model="selectedRange" 
-      @focus="showCalendar = true" 
       @click="showCalendar = true" 
       placeholder="Выберите диапазон дат"
       readonly
@@ -48,7 +47,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted } from 'vue';
 
 const selectedRange = ref('');
 const showCalendar = ref(false);
@@ -56,39 +55,21 @@ const currentDate = new Date();
 const month = ref(currentDate.getMonth());
 const year = ref(currentDate.getFullYear());
 
+const weekDays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+
 const monthNames = [
   'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
   'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
 ];
 
-const weekDays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
-
 const startDate = ref(null);
 const endDate = ref(null);
-
-const previousMonthDays = ref([]);
-const nextMonthDays = ref([]);
 const daysInMonth = ref([]);
 
 const getDaysInMonth = (month, year) => new Date(year, month + 1, 0).getDate();
 
-const getFirstDayOfWeek = (month, year) => {
-  const firstDay = new Date(year, month, 1).getDay();
-  return firstDay === 0 ? 7 : firstDay;
-};
-
 const updateCalendar = () => {
   const daysInCurrentMonth = Array.from({ length: getDaysInMonth(month.value, year.value) }, (_, i) => i + 1);
-  const firstDayOfMonth = getFirstDayOfWeek(month.value, year.value);
-
-  const prevMonthDaysCount = firstDayOfMonth - 1;
-  const prevMonthLastDay = new Date(year.value, month.value, 0).getDate();
-  previousMonthDays.value = Array.from({ length: prevMonthDaysCount }, (_, i) => prevMonthLastDay - prevMonthDaysCount + i + 1);
-
-  const totalDays = daysInCurrentMonth.length + prevMonthDaysCount;
-  const nextMonthDaysCount = totalDays % 7 === 0 ? 0 : 7 - totalDays % 7;
-  nextMonthDays.value = Array.from({ length: nextMonthDaysCount }, (_, i) => i + 1);
-
   daysInMonth.value = daysInCurrentMonth;
 };
 
@@ -104,18 +85,13 @@ const formatDate = (date) => {
   return `${String(day).padStart(2, '0')} ${monthNames[month]} ${year}`;
 };
 
-const isValidDay = (day) => day > 0 && day <= getDaysInMonth(month.value, year.value);
-
 const selectDate = (day) => {
   const selectedDate = { day, month: month.value, year: year.value };
-
 
   if (!startDate.value) {
     startDate.value = selectedDate;
   } else if (!endDate.value) {
-
     endDate.value = selectedDate;
-
 
     const start = new Date(startDate.value.year, startDate.value.month, startDate.value.day);
     const end = new Date(endDate.value.year, endDate.value.month, endDate.value.day);
@@ -123,38 +99,22 @@ const selectDate = (day) => {
       [startDate.value, endDate.value] = [endDate.value, startDate.value];
     }
   } else {
-
     startDate.value = selectedDate;
     endDate.value = null;
   }
-
-  logSelection();
-  saveToLocalStorage();
-};
-
-const logSelection = () => console.log("Выбранный диапазон дат:", selectedRange.value);
-
-const saveToLocalStorage = () => {
-  localStorage.setItem('selectedRange', selectedRange.value);
-  localStorage.setItem('startDate', JSON.stringify(startDate.value));
-  localStorage.setItem('endDate', JSON.stringify(endDate.value));
 };
 
 const cancelSelection = () => {
   startDate.value = null;
   endDate.value = null;
   showCalendar.value = false;
-  selectedRange.value = null;
-  logSelection();
-  saveToLocalStorage();
+  selectedRange.value = '';
 };
 
 const saveSelection = () => {
   if (startDate.value && endDate.value) {
     selectedRange.value = `${formatDate(startDate.value)} - ${formatDate(endDate.value)}`;
     showCalendar.value = false;
-    logSelection();
-    saveToLocalStorage();
   } else {
     alert('Пожалуйста, выберите диапазон дат');
   }
@@ -162,16 +122,6 @@ const saveSelection = () => {
 
 onMounted(() => {
   updateCalendar();
-
-  const storedRange = localStorage.getItem('selectedRange');
-  const storedStartDate = localStorage.getItem('startDate');
-  const storedEndDate = localStorage.getItem('endDate');
-
-  if (storedRange) selectedRange.value = storedRange;
-  if (storedStartDate) startDate.value = JSON.parse(storedStartDate);
-  if (storedEndDate) endDate.value = JSON.parse(storedEndDate);
-
-  logSelection();
 });
 
 const isSelectedDay = (day) => {
