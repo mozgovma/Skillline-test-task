@@ -80,9 +80,9 @@
       </div>
 
       <div class="pagination-footer">
-        <!-- Пагинация -->
+
         <div class="pagination" v-if="pages_count > 1">
-          <!-- Кнопка предыдущей страницы -->
+
           <button 
             :disabled="page <= 1" 
             @click="goToPage(page - 1)" 
@@ -94,7 +94,7 @@
             Страница {{ page }} из {{ pages_count }}
           </span>
           
-          <!-- Кнопка следующей страницы -->
+
           <button 
             :disabled="page >= pages_count" 
             @click="goToPage(page + 1)" 
@@ -138,7 +138,6 @@ const selectedSchools = ref([]);
 const pages_count = ref();  // Количество страниц, получаем с API
 const totalRecords = ref(); // Всего записей, получаем с API
 
-// Функция для получения данных школ
 const fetchSchools = async () => {
   isLoading.value = true;
 
@@ -174,12 +173,12 @@ const fetchSchools = async () => {
 };
 
 const filteredSchools = computed(() => {
-  if (!searchQuery.value.trim()) return schools.value.data?.list || []; // Если поиск пустой, показываем все
+  if (!searchQuery.value.trim()) return schools.value.data?.list || [];
 
   return (schools.value.data?.list || []).filter(school => {
-    const name = school.edu_org.short_name || ""; // Если `short_name` отсутствует, подставляем пустую строку
-    const region = school.edu_org.region?.name || ""; // Проверяем `region.name`
-    const address = school.edu_org.contact_info?.post_address || ""; // Проверяем `contact_info.post_address`
+    const name = school.edu_org.short_name || "";
+    const region = school.edu_org.region?.name || "";
+    const address = school.edu_org.contact_info?.post_address || "";
 
     const query = searchQuery.value.toLowerCase();
     return (
@@ -192,29 +191,29 @@ const filteredSchools = computed(() => {
 
 
 const handleSearch = () => {
-  page.value = 1; // Сбрасываем страницу на первую
-  localStorage.setItem('searchQuery', searchQuery.value); // Сохраняем запрос в localStorage
-  fetchSchools(); // Перезапрашиваем данные после поиска
+  page.value = 1;
+  localStorage.setItem('searchQuery', searchQuery.value);
+  fetchSchools();
 };
 
 
-// Функция для проверки, открыта ли школа
+
 const checkSchoolStatus = (endDate) => {
   const currentDate = new Date();
   if (!endDate) {
-    return true; // Если end_date не указана, школа считается открытой
+    return true;
   }
-  return new Date(endDate) > currentDate; // Если дата больше текущей, школа открыта
+  return new Date(endDate) > currentDate;
 };
 
-// Функция фильтрации данных
+
 const filterSchools = (data, selectedOptions, selectedOptionsCust) => {
   if (!selectedOptions && !selectedOptionsCust || (selectedOptions.length === 0 && selectedOptionsCust.length === 0)) {
-    return data; // Если фильтры не заданы, возвращаем все данные
+    return data; 
   }
 
   const filteredList = data.data.list.filter((school) => {
-    // Фильтрация по уровню образования
+   
     const eduLevel = school.supplements
       ?.flatMap((supplement) => supplement.educational_programs)
       ?.find((program) => program?.edu_level?.short_name)
@@ -222,11 +221,10 @@ const filterSchools = (data, selectedOptions, selectedOptionsCust) => {
 
     const levelMatch = selectedOptions.includes(eduLevel);
 
-    // Фильтрация по статусу (открыта/закрыта)
+   
     const isOpen = checkSchoolStatus(school.end_date);
     const statusMatch = selectedOptionsCust.includes('Открыта') && isOpen || selectedOptionsCust.includes('Закрыта') && !isOpen;
 
-    // Возвращаем школу, если оба условия (уровень образования и статус) совпадают
     return (selectedOptions.length === 0 || levelMatch) && (selectedOptionsCust.length === 0 || statusMatch);
   });
 
@@ -258,7 +256,7 @@ const handleError = (status) => {
   }
 };
 
-// Функции обновления количества школ на странице и другие
+
 const updateSchoolsCount = () => {
   page.value = 1;
   fetchSchools();

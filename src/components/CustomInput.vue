@@ -109,21 +109,21 @@ const isValidDay = (day) => day > 0 && day <= getDaysInMonth(month.value, year.v
 const selectDate = (day) => {
   const selectedDate = { day, month: month.value, year: year.value };
 
-  // Если startDate пустой, устанавливаем его
+
   if (!startDate.value) {
     startDate.value = selectedDate;
   } else if (!endDate.value) {
-    // Если endDate пустой, то устанавливаем его
+
     endDate.value = selectedDate;
 
-    // Если endDate меньше startDate, меняем их местами
+
     const start = new Date(startDate.value.year, startDate.value.month, startDate.value.day);
     const end = new Date(endDate.value.year, endDate.value.month, endDate.value.day);
     if (end < start) {
       [startDate.value, endDate.value] = [endDate.value, startDate.value];
     }
   } else {
-    // Если обе даты уже выбраны, сбрасываем выбор и начинаем заново
+
     startDate.value = selectedDate;
     endDate.value = null;
   }
